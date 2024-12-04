@@ -17,7 +17,7 @@ inline bool isValid(int x, int y, int rows, int cols) {
     return x >= 0 && x < rows && y >= 0 && y < cols;
 }
 
-// Prétraite la grille pour indexer les positions des caractères
+// Prétraitement de la grille pour indexer les positions des caractères
 unordered_map<char, vector<pair<int, int>>> preprocessGrid(const vector<string>& grid) {
     unordered_map<char, vector<pair<int, int>>> charPositions;
     for (int x = 0; x < grid.size(); ++x) {
