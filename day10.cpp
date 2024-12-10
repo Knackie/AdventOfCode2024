@@ -1,51 +1,69 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <map>
 #include <set>
 #include <string>
 using namespace std;
 
+// Memoization for Part 2
+map<pair<int, int>, int> memo;
+
 // Function to check if a position is valid for traversal
-bool isValid(int x, int y, int prevHeight, const vector<vector<int>>& map, const set<pair<int, int>>& visited) {
+bool isValid(int x, int y, int prevHeight, const vector<vector<int>>& map) {
     int rows = map.size();
     int cols = map[0].size();
     return x >= 0 && x < rows && y >= 0 && y < cols &&
-           visited.find({x, y}) == visited.end() &&
-           map[x][y] == prevHeight + 1;
+        map[x][y] == prevHeight - 1;  // Check for descending height
 }
 
-// Part 1: Depth-first search to calculate trailhead scores (count reachable 9s)
-void dfsScore(int x, int y, const vector<vector<int>>& map, set<pair<int, int>>& visited, set<pair<int, int>>& reachableNines) {
-    if (map[x][y] == 9) {
-        reachableNines.insert({x, y});
-        return;
+// Part 2: Count distinct paths to reach height 0
+int dfsRating(int x, int y, const vector<vector<int>>& map) {
+    if (map[x][y] == 0) {  // Base case: Reached height 0
+        return 1;
     }
-    visited.insert({x, y});
-    vector<pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
-    for (auto [dx, dy] : directions) {
-        int nx = x + dx, ny = y + dy;
-        if (isValid(nx, ny, map[x][y], map, visited)) {
-            dfsScore(nx, ny, map, visited, reachableNines);
-        }
+    if (memo.find({ x, y }) != memo.end()) {  // Check memoized result
+        return memo[{x, y}];
     }
-    visited.erase({x, y});
-}
 
-// Part 2: Depth-first search to calculate trailhead ratings (count distinct trails)
-int dfsRating(int x, int y, const vector<vector<int>>& map, set<pair<int, int>>& visited) {
-    visited.insert({x, y});
     int count = 0;
-    bool isTrailEnd = true; // A trail ends if no valid moves are possible
-    vector<pair<int, int>> directions = {{-1, 0}, {1, 0}, {0, -1}, {0, 1}};
+    vector<pair<int, int>> directions = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
     for (auto [dx, dy] : directions) {
         int nx = x + dx, ny = y + dy;
-        if (isValid(nx, ny, map[x][y], map, visited)) {
-            isTrailEnd = false;
-            count += dfsRating(nx, ny, map, visited);
+        if (isValid(nx, ny, map[x][y], map)) {
+            count += dfsRating(nx, ny, map);
         }
     }
-    visited.erase({x, y});
-    return count + (isTrailEnd ? 1 : 0); // Count as a trail if it's an end
+    memo[{x, y}] = count;  // Memoize result
+    return count;
+}
+
+// Part 1: Count reachable trailheads (0) from height 9
+int ways1(int x, int y, const vector<vector<int>>& map) {
+    set<pair<int, int>> visited;
+    set<pair<int, int>> reachableZeros;
+    vector<pair<int, int>> stack = { {x, y} };
+
+    while (!stack.empty()) {
+        auto [cx, cy] = stack.back();
+        stack.pop_back();
+        if (visited.count({ cx, cy })) continue;
+        visited.insert({ cx, cy });
+
+        if (map[cx][cy] == 0) {
+            reachableZeros.insert({ cx, cy });
+        }
+
+        vector<pair<int, int>> directions = { {-1, 0}, {1, 0}, {0, -1}, {0, 1} };
+        for (auto [dx, dy] : directions) {
+            int nx = cx + dx, ny = cy + dy;
+            if (isValid(nx, ny, map[cx][cy], map)) {
+                stack.push_back({ nx, ny });
+            }
+        }
+    }
+
+    return reachableZeros.size();
 }
 
 int main() {
@@ -63,7 +81,7 @@ int main() {
         vector<int> row;
         for (char c : line) {
             if (isdigit(c)) {
-                row.push_back(c - '0'); // Convert character to integer
+                row.push_back(c - '0');  // Convert character to integer
             }
         }
         if (!row.empty()) {
@@ -81,16 +99,9 @@ int main() {
     // Loop through each position to identify trailheads
     for (int r = 0; r < rows; r++) {
         for (int c = 0; c < cols; c++) {
-            if (map[r][c] == 0) { // Trailhead found
-                // Part 1: Compute trailhead score
-                set<pair<int, int>> visited;
-                set<pair<int, int>> reachableNines;
-                dfsScore(r, c, map, visited, reachableNines);
-                totalScore += reachableNines.size();
-
-                // Part 2: Compute trailhead rating
-                visited.clear();
-                totalRating += dfsRating(r, c, map, visited);
+            if (map[r][c] == 9) {  // Start from height 9
+                totalScore += ways1(r, c, map);
+                totalRating += dfsRating(r, c, map);
             }
         }
     }
